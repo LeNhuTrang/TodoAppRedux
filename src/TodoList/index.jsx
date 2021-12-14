@@ -4,17 +4,57 @@ import "./style.css";
 import image from "../assets/img/X2oObC4.png";
 import { createAction } from "../store/actions";
 import { actionType } from "../store/actions/type";
+import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
 
 const TodoList = (props) => {
+  const dispatch = useDispatch();
+  const { taskList } = useSelector((state) => state.todoListReducer);
+  const { taskEdit } = useSelector((state) => state.todoListReducer);
+
   const [state, setState] = useState({
     taskName: "",
     disabled: true,
   });
 
-  const dispatch = useDispatch();
-  const { taskList } = useSelector((state) => state.todoListReducer);
-  const { taskEdit } = useSelector((state) => state.todoListReducer);
+  let activeTaskList = taskList?.filter((task) => !task.done);
+  let doneTaskList = taskList?.filter((task) => task.done);
 
+  //Drag-drop logic:
+  const handleOnDragEnd = (result) => {
+    const { source, destination } = result;
+
+    if (!destination) return;
+
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    )
+      return;
+
+    //otherwise:
+    let chosenTask;
+    let activeTasks = activeTaskList;
+    let doneTasks = doneTaskList;
+
+    //drag a chosen task from list:
+    if (source.droppableId === "activeTask") {
+      chosenTask = activeTasks[source.index];
+
+      activeTasks.splice(source.index, 1);
+    } else {
+      chosenTask = doneTasks[source.index];
+      doneTasks.splice(source.index, 1);
+    }
+
+    //drop a chosen task into a new destination
+    if (destination.droppableId === "activeTask") {
+      activeTasks.splice(destination.index, 0, { ...chosenTask, done: false });
+    } else {
+      doneTasks.splice(destination.index, 0, { ...chosenTask, done: true });
+    }
+  };
+
+  //Add:
   const handleAddTask = () => {
     let { taskName } = state;
 
@@ -61,11 +101,13 @@ const TodoList = (props) => {
     dispatch(createAction(actionType.SET_TASK, listAfterDeleted));
   };
 
+  //Edit:
   const handleEditTask = (task) => {
     setState({ taskName: task.taskName, disabled: false });
     dispatch(createAction(actionType.EDIT_TASK, task));
   };
 
+  //Update:
   const handleUpdateTask = () => {
     let cloneTaskEdit = { ...taskEdit };
     let cloneTaskList = [...taskList];
@@ -106,8 +148,6 @@ const TodoList = (props) => {
                   taskName: e.target.value,
                   disabled: state.disabled,
                 });
-                console.log(state.taskName);
-                console.log(state.disabled);
               }}
               id="newTask"
               type="text"
@@ -123,62 +163,103 @@ const TodoList = (props) => {
               </button>
             )}
           </div>
-          <div className="card__todo">
-            {/* Uncompleted tasks */}
+          <DragDropContext onDragEnd={handleOnDragEnd}>
+            <div className="card__todo">
+              {/* Uncompleted tasks */}
+              <Droppable droppableId="activeTask">
+                {(provided) => (
+                  <ul
+                    className="todo"
+                    id="todo"
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                  >
+                    {activeTaskList.map((task, i) => {
+                      return (
+                        <Draggable
+                          key={task.id}
+                          draggableId={task.id.toString()}
+                          index={i}
+                        >
+                          {(provided) => (
+                            <li
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              ref={provided.innerRef}
+                            >
+                              <span>{task.taskName}</span>
+                              <div className="buttons">
+                                <button
+                                  className="complete"
+                                  onClick={() => handleEditTask(task)}
+                                >
+                                  <i className="fa fa-edit"></i>
+                                </button>
+                                <button
+                                  className="remove"
+                                  onClick={() => handleDelete(task.id)}
+                                >
+                                  <i className="fa fa-trash-alt" />
+                                </button>
+                                <button
+                                  className="complete"
+                                  onClick={() => handleSetCompleted(task.id)}
+                                >
+                                  <i className="far fa-check-circle" />
+                                </button>
+                              </div>
+                            </li>
+                          )}
+                        </Draggable>
+                      );
+                    })}
+                    {provided.placeholder}
+                  </ul>
+                )}
+              </Droppable>
 
-            <ul className="todo" id="todo">
-              {taskList
-                .filter((task) => !task.done)
-                .map((task, i) => {
-                  return (
-                    <li key={i}>
-                      <span>{task.taskName}</span>
-                      <div className="buttons">
-                        <button
-                          className="complete"
-                          onClick={() => handleEditTask(task)}
+              {/* Completed tasks */}
+              <Droppable droppableId="doneTask">
+                {(provided) => (
+                  <ul
+                    className="todo"
+                    id="completed"
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                  >
+                    {doneTaskList.map((task, i) => {
+                      return (
+                        <Draggable
+                          key={task.id}
+                          draggableId={task.id.toString()}
+                          index={i}
                         >
-                          <i className="fa fa-edit"></i>
-                        </button>
-                        <button
-                          className="remove"
-                          onClick={() => handleDelete(task.id)}
-                        >
-                          <i className="fa fa-trash-alt" />
-                        </button>
-                        <button
-                          className="complete"
-                          onClick={() => handleSetCompleted(task.id)}
-                        >
-                          <i className="far fa-check-circle" />
-                        </button>
-                      </div>
-                    </li>
-                  );
-                })}
-            </ul>
-
-            {/* Completed tasks */}
-            <ul className="todo" id="completed">
-              {taskList
-                .filter((task) => task.done)
-                .map((task, i) => {
-                  return (
-                    <li key={i}>
-                      <span>{task.taskName}</span>
-                      <div className="buttons">
-                        <button
-                          className="remove"
-                          onClick={() => handleDelete(task.id)}
-                        >
-                          <i className="fa fa-trash-alt" />
-                        </button>
-                      </div>
-                    </li>
-                  );
-                })}
-            </ul>
-          </div>
+                          {(provided) => (
+                            <li
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              ref={provided.innerRef}
+                            >
+                              <span>{task.taskName}</span>
+                              <div className="buttons">
+                                <button
+                                  className="remove"
+                                  onClick={() => handleDelete(task.id)}
+                                >
+                                  <i className="fa fa-trash-alt" />
+                                </button>
+                              </div>
+                            </li>
+                          )}
+                        </Draggable>
+                      );
+                    })}
+                    {provided.placeholder}
+                  </ul>
+                )}
+              </Droppable>
+            </div>
+          </DragDropContext>
         </div>
       </div>
     </div>

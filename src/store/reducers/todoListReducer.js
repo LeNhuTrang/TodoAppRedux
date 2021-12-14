@@ -8,15 +8,14 @@ const initialState = {
     { id: "task-4", taskName: "Task 4", done: false },
   ],
   taskEdit: { id: "", taskName: "", done: false },
-
 };
 
 export default (state = initialState, { type, payload }) => {
   switch (type) {
     case actionType.SET_TASK:
-      return {...state, taskList: payload}
+      return { ...state, taskList: payload };
     case actionType.EDIT_TASK:
-      return{...state, taskEdit: payload}
+      return { ...state, taskEdit: payload };
     default:
       return state;
   }
