@@ -49,9 +49,19 @@ const TodoList = (props) => {
     //drop a chosen task into a new destination
     if (destination.droppableId === "activeTask") {
       activeTasks.splice(destination.index, 0, { ...chosenTask, done: false });
+      //assign activeTasks back to activeTaskList to update store below
+      activeTaskList = activeTasks;
     } else {
       doneTasks.splice(destination.index, 0, { ...chosenTask, done: true });
+      //assign doneTasks back to doneTaskList to update store below
+      doneTaskList = doneTasks;
     }
+
+    //combine 2 lists to set new value for taskList
+    let newtasklist = activeTaskList.concat(doneTaskList);
+
+    //dispatch newtasklist as new value of taskList after dropping event. without these updating steps, when click edit btn, dropped tasks are sent back to the initial list as "done" in taskList was not updated
+    dispatch(createAction(actionType.SET_TASK, newtasklist));
   };
 
   //Add:
